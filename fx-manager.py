@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-fx-manager.py — Firefox Extension & Profile Backup Manager
+fx-manager.py — Firefox Sync Manager
 
 Commands:
   sync     Sync UUID map and extension storage to backup zip
@@ -29,7 +29,7 @@ import zipfile
 
 CONFIG_FILENAME = "fx-manager.conf"
 
-DEFAULT_BACKUP_DIR        = os.path.join(os.path.expanduser("~"), "Documents", "firefox-extension-manager")
+DEFAULT_BACKUP_DIR        = os.path.join(os.path.expanduser("~"), "Documents", "firefox-sync-manager")
 DEFAULT_BACKUP_FILENAME   = "firefox-backup.zip"
 DEFAULT_TRANSFER_FILENAME = "firefox-transfer.zip"
 README_FILENAME           = "README.md"
@@ -579,13 +579,13 @@ def cmd_init(profile, firefox_bin):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Firefox Extension & Profile Backup Manager",
+        description="Firefox Sync Manager",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
     # sync
-    p_sync = sub.add_parser("sync", help="Sync UUID map and extension storage to backup zip")
+    p_sync = sub.add_parser("sync", help="Sync browser configuration settings to backup zip")
     p_sync.add_argument("--profile", help="Path to Firefox profile directory")
     p_sync.add_argument("--backup", help="Path to backup zip file")
     p_sync.add_argument("--export", action="store_true", help="Package script and backup zip into a transfer zip after syncing")
