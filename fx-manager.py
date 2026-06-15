@@ -29,9 +29,10 @@ import zipfile
 
 CONFIG_FILENAME = "fx-manager.conf"
 
-DEFAULT_BACKUP_DIR      = os.path.join(os.path.expanduser("~"), "Documents", "firefox-extension-manager")
-DEFAULT_BACKUP_FILENAME = "firefox-backup.zip"
+DEFAULT_BACKUP_DIR        = os.path.join(os.path.expanduser("~"), "Documents", "firefox-extension-manager")
+DEFAULT_BACKUP_FILENAME   = "firefox-backup.zip"
 DEFAULT_TRANSFER_FILENAME = "firefox-transfer.zip"
+README_FILENAME           = "README.md"
 
 UUID_PREF_KEY       = "extensions.webextensions.uuids"
 COMMENT_HEADER      = "// Extensions UUID Map (managed by fx-manager.py — do not edit manually)"
@@ -235,9 +236,17 @@ def build_comment_block(uuid_map, name_map):
     return "\n".join(lines)
 
 
-def build_userjs(uuid_map, name_map):
-    """Build the full user.js UUID section: comment block + pref line."""
-    return build_comment_block(uuid_map, name_map) + "\n" + build_pref_line(uuid_map) + "\n"
+def build_userjs(uuid_map, name_map, profile_userjs=None):
+    """
+    Build the zip's user.js:
+    - If the profile has a user.js, include its content first (UUID-free)
+    - Append the UUID comment block and pref line
+    The profile's user.js is never expected to contain a UUID section.
+    """
+    uuid_section = build_comment_block(uuid_map, name_map) + "\n" + build_pref_line(uuid_map) + "\n"
+    if profile_userjs:
+        return profile_userjs.rstrip("\n") + "\n\n" + uuid_section
+    return uuid_section
 
 
 def build_legend(uuid_map, name_map):
@@ -370,6 +379,7 @@ def export_transfer(zip_path, config):
     """Package manager + backup files into a transfer zip in backup_dir."""
     script_path = os.path.abspath(__file__)
     transfer_path = config["transfer_path"]
+    readme_path = os.path.join(config["backup_dir"], README_FILENAME)
     tmp_path = transfer_path + ".tmp"
     os.makedirs(config["backup_dir"], exist_ok=True)
     with zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -378,6 +388,10 @@ def export_transfer(zip_path, config):
             zf.write(zip_path, DEFAULT_BACKUP_FILENAME)
         else:
             die(f"Backup zip not found at {zip_path} — run sync first.")
+        if os.path.isfile(readme_path):
+            zf.write(readme_path, README_FILENAME)
+        else:
+            print(f"  Warning: README.md not found at {readme_path} — package will not include documentation.")
     if os.path.exists(transfer_path):
         os.remove(transfer_path)
     os.rename(tmp_path, transfer_path)
@@ -428,7 +442,12 @@ def cmd_sync(profile, zip_path, export=False, config=None):
 
     # --- Build name map, user.js, and legend from current prefs_map ---
     name_map = get_all_names(profile, prefs_map)
-    userjs_text = build_userjs(prefs_map, name_map)
+    # Read profile's user.js if present — carried into zip, UUID section appended
+    profile_userjs_path = os.path.join(profile, "user.js")
+    profile_userjs = None
+    if os.path.isfile(profile_userjs_path):
+        profile_userjs = open(profile_userjs_path, "r", encoding="utf-8").read()
+    userjs_text = build_userjs(prefs_map, name_map, profile_userjs)
     legend_text = build_legend(prefs_map, name_map)
 
     # --- Write zip (wipes and recopies storage fresh) ---
