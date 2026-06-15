@@ -1,4 +1,4 @@
-# Firefox Extension Manager
+# Firefox Sync Manager
 
 ## Overview
 
